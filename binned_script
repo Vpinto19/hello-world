@@ -1,0 +1,165 @@
+import sys 
+from subprocess import call
+#import pyfits
+from numpy import sqrt
+from make4FGLxml import *
+import pandas as pd
+
+
+################################################################
+# Parameters to be editted:
+################################################################
+PLIST = 'events_es_flares.list'
+SCFILE = '/data/scratch/ysong/fdata/scfile_dec3_19.fits'
+gllfile= '/data/scratch/ysong/fdata/gll_iem_v07.fits'
+isofile= '/data/scratch/ysong/fdata/iso_P8R3_SOURCE_V2_v1.txt'
+catalog = '/data/scratch/ysong/fdata/gll_psc_v21.fit'
+#TMIN = 239155201.000
+#TMAX = 575424005.000
+EMIN = 100
+EMAX = 10000
+#DT = 3525# Size of time bins in seconds.
+RAD = 6 # Aperture radius.
+CRAD = int(RAD/sqrt(2)/0.1)
+#SUFFIX = '_stack' # Suffix in the output file name.
+################################################################
+
+Stars = pd.read_csv(sys.argv[1])
+no_stars=len(Stars.index)
+no_flares=sum(Stars[u'No. Flares'])
+Flares = pd.read_csv(sys.argv[2])
+
+def select(name,ra,dec, tstart, tend, fn):
+	call('gtselect infile='+fn+' outfile='+name+'_binned'+SUFFIX+'_filtered.fits ra='+str(ra)+' dec='+str(dec)+' rad='+str(RAD)+' evclass=128 tmin='+str(tstart)+' tmax='+str(tend)+' emin='+str(EMIN)+' emax='+str(EMAX)+' zmax=100',shell=True)
+
+def mktime(name):
+	call('gtmktime scfile='+SCFILE+' filter="DATA_QUAL==1 && LAT_CONFIG==1 && ABS(ROCK_ANGLE)<52" roicut=yes evfile='+name+'_binned'+SUFFIX+'_filtered.fits outfile='+name+'_binned'+SUFFIX+'_gti.fits',shell=True)
+
+def gtbin(name, ra, dec):
+	call('gtbin evfile='+name+'_binned'+SUFFIX+'_gti.fits outfile='+name+'_binned_ccube'+SUFFIX+'.fits scfile=NONE nxpix='+str(CRAD)+' nypix='+str(CRAD)+' binsz=0.1 coordsys=CEL xref='+str(ra)+' yref='+str(dec)+' axisrot=0.0 algorithm=CCUBE proj=AIT ebinalg=LOG emin='+str(EMIN)+' emax='+str(EMAX)+' enumbins=20',shell=True)
+
+def gtltcube(name):
+    call('gtltcube zmax=100 evfile='+name+'_binned'+SUFFIX+'_gti.fits scfile='+SCFILE+' outfile='+name+'_binned'+SUFFIX+'_ltcube.fits dcostheta=0.025 binsz=1',shell=True)
+
+def gtexpcube2(name,ra,dec):
+    call('gtexpcube2 infile='+name+'_binned'+SUFFIX+'_ltcube.fits cmap=none outfile='+name+'_binned'+SUFFIX+'_40deg_expcube.fits irfs=P8R3_SOURCE_V2 nxpix=400 nypix=400 binsz=0.1 coordsys=CEL xref='+str(ra)+' yref='+str(dec)+' axisrot=0.0 proj=AIT emin='+str(EMIN)+' emax='+str(EMAX)+' enumbins=20',shell=True)
+
+def gtsrcmaps(name):
+    call('gtsrcmaps expcube='+name+'_binned'+SUFFIX+'_ltcube.fits cmap='+name+'_binned_ccube'+SUFFIX+'.fits srcmdl='+name+SUFFIX+'_input_model.xml bexpmap='+name+'_binned'+SUFFIX+'_40deg_expcube.fits outfile='+name+'_binned_srcmaps'+SUFFIX+'.fits irfs=CALDB',shell=True)
+    
+def gtsrcmaps2(name):
+    call('gtsrcmaps expcube='+name+'_binned'+SUFFIX+'_ltcube.fits cmap='+name+'_binned_ccube'+SUFFIX+'.fits srcmdl='+name+'_binned_output_dr'+SUFFIX+'.xml bexpmap='+name+'_binned'+SUFFIX+'_40deg_expcube.fits outfile='+name+'_binned_srcmaps2'+SUFFIX+'.fits irfs=CALDB',shell=True)
+
+def gtlikedr(name):
+    call('gtlike refit=no plot=no sfile='+name+'_binned_output_dr'+SUFFIX+'.xml > '+name+'_fit_data_dr'+SUFFIX+'.txt statistic=BINNED cmap='+name+'_binned_srcmaps'+SUFFIX+'.fits bexpmap='+name+'_binned'+SUFFIX+'_40deg_expcube.fits expcube='+name+'_binned'+SUFFIX+'_ltcube.fits srcmdl='+name+SUFFIX+'_input_model.xml irfs=CALDB optimizer=DRMNFB',shell=True)
+
+def gtlike(name):
+#call('gtlike refit=no plot=no sfile='+name+'_binned_output'+SUFFIX+'.xml > '+name+'_fit_data'+SUFFIX+'.txt statistic=BINNED cmap='+name+'_binned_srcmaps2'+SUFFIX+'.fits bexpmap='+name+'_binned'+SUFFIX+'_40deg_expcube.fits expcube='+name+'_binned'+SUFFIX+'_ltcube.fits srcmdl='+name+'_binned_output_dr'+SUFFIX+'.xml irfs=CALDB optimizer=NEWMINUIT',shell=True)
+    call('gtlike refit=no plot=no sfile='+name+'_binned_output'+SUFFIX+'.xml > '+name+'_fit_data'+SUFFIX+'.txt statistic=BINNED cmap='+name+'_binned_srcmaps'+SUFFIX+'.fits bexpmap='+name+'_binned'+SUFFIX+'_40deg_expcube.fits expcube='+name+'_binned'+SUFFIX+'_ltcube.fits srcmdl='+name+SUFFIX+'_input_model.xml irfs=CALDB optimizer=NEWMINUIT',shell=True)
+
+def gtmodel(name):
+    call('gtmodel srcmaps='+name+'_binned_srcmaps'+SUFFIX+'.fits srcmdl='+name+'_binned_output'+SUFFIX+'.xml outfile='+name+'_model_map'+SUFFIX+'.fits expcube='+name+'_binned'+SUFFIX+'_ltcube.fits bexpmap='+name+'_binned'+SUFFIX+'_40deg_expcube.fits irfs=CALDB',shell=True)
+
+def gtbin2(name, ra, dec):
+    call('gtbin evfile='+name+'_binned'+SUFFIX+'_gti.fits outfile='+name+'_binned_cmap_small'+SUFFIX+'.fits scfile=NONE nxpix='+str(CRAD)+' nypix='+str(CRAD)+' binsz=0.1 coordsys=CEL xref='+str(ra)+' yref='+str(dec)+' axisrot=0.0 algorithm=CMAP proj=STG',shell=True)
+
+def farith(name):
+    call('farith infil1='+name+'_binned_cmap_small'+SUFFIX+'.fits infil2='+name+'_model_map'+SUFFIX+'.fits outfil='+name+'_residual'+SUFFIX+'.fits ops=SUB',shell=True)
+
+
+def write(name):
+	outfile = open(name+'_lc_'+SUFFIX+'_bary.txt','w')
+	fits = pyfits.open(name+'_lc_'+SUFFIX+'_bary.fits')
+	tbldata = fits[1].data
+	time = tbldata.field('TIME')
+	counts = tbldata.field('COUNTS')
+	exp = tbldata.field('EXPOSURE')
+	err = tbldata.field('ERROR')
+	flux = []
+	ferr = []
+	time2 = []
+	experr = []
+	meanrate = sum(counts)/sum(exp)
+	for i in range(len(counts)):
+		if exp[i]>0:
+			flux=append(flux,counts[i]/exp[i])
+			ferr=append(ferr,err[i]/exp[i])
+			time2=append(time2,time[i])
+			experr=append(experr,sqrt(meanrate/exp[i]))
+	time3 = time2/86400.0 + 51910.0 + 7.428703703703703e-4
+	for i in range(len(time2)):
+		outfile.write(str(time2[i]) + '\t'+str(time3[i]) + '\t' + str(flux[i]) + '\t' + str(ferr[i]) + '\t' + str(experr[i]) + '\n')
+	outfile.close()
+
+print 'E_min = ', EMIN, 'MeV.'
+print 'E_max = ', EMAX, 'MeV.'
+#print 'Time bin = ', DT/3600., 'hrs.'
+print 'Number of stars: ', no_stars
+print 'Total Number of Flares: ', no_flares
+print 'Aperture radius = ', RAD, 'degree(s).'
+
+for line in range(no_stars):
+        name = Stars[u'Name'][line]
+        ra = Stars[u'RA'][line]
+        dec = Stars[u'DEC'][line]
+        nf = Stars[u'No. Flares'][line] 
+        print 'Treating ', name, '.   RA:', ra, '  Dec:', dec, 'that has ', nf, 'flares'
+        ft_ind=Flares.loc[Flares[u'Name']==name].index
+        for i in range(nf):
+            tstart = (Flares[u'tstart'][ft_ind[i]]-(51910.0 + 7.428703703703703e-4))*86400.0-900.
+            tend = tstart + 24*3600 #tend = (Flares[u'tstop'][ft_ind[i]]-(51910.0 + 7.428703703703703e-4))*86400.0+900.
+            fweek=int((tstart-234316801.000)/(3600*24*7))+1
+            SUFFIX='_flare_'+str(int(tstart))
+            """
+            filename=name+SUFFIX+'.txt'
+            ph_files=open(filename,'w+')
+            if (fweek>513) or (fweek < 511):
+        
+                ph_files.write('/data/scratch/ysong/fdata/weeklyphoton/lat_photon_weekly_w'+str(fweek-1)+'_p305_v001.fits')
+                ph_files.write('\n')
+                ph_files.write('/data/scratch/ysong/fdata/weeklyphoton/lat_photon_weekly_w'+str(fweek)+'_p305_v001.fits')
+                ph_files.write('\n')
+                ph_files.write('/data/scratch/ysong/fdata/weeklyphoton/lat_photon_weekly_w'+str(fweek+1)+'_p305_v001.fits')
+            
+            
+            elif fweek==511:
+                ph_files.write('/data/scratch/ysong/fdata/weeklyphoton/lat_photon_weekly_w'+str(fweek-1)+'_p305_v001.fits')
+                ph_files.write('\n')
+                ph_files.write('/data/scratch/ysong/fdata/weeklyphoton/lat_photon_weekly_w'+str(fweek)+'_p305_v001.fits')
+                ph_files.write('\n')
+                ph_files.write('/data/scratch/ysong/fdata/weeklyphoton/lat_photon_weekly_w'+str(fweek+2)+'_p305_v001.fits')
+
+            
+            elif fweek==513:
+                ph_files.write('/data/scratch/ysong/fdata/weeklyphoton/lat_photon_weekly_w'+str(fweek-2)+'_p305_v001.fits')
+                ph_files.write('\n')
+                ph_files.write('/data/scratch/ysong/fdata/weeklyphoton/lat_photon_weekly_w'+str(fweek)+'_p305_v001.fits')
+                ph_files.write('\n')
+                ph_files.write('/data/scratch/ysong/fdata/weeklyphoton/lat_photon_weekly_w'+str(fweek+1)+'_p305_v001.fits')
+            
+            
+            elif fweek==512:
+                ph_files.write('/data/scratch/ysong/fdata/weeklyphoton/lat_photon_weekly_w'+str(fweek-1)+'_p305_v001.fits')
+                ph_files.write('\n')
+                ph_files.write('/data/scratch/ysong/fdata/weeklyphoton/lat_photon_weekly_w'+str(fweek+1)+'_p305_v001.fits')
+            
+            
+            ph_files.close()
+            select(name,ra,dec, tstart, tend, filename)
+            mktime(name)
+            gtbin(name,ra,dec)
+            gtltcube(name)
+            gtexpcube2(name,ra,dec)
+            """
+            mymodel=srcList(catalog,name+'_binned'+SUFFIX+'_gti.fits', name+SUFFIX+'_input_model.xml')
+            mymodel.makeModel(gllfile,'gll_iem_v07', isofile, 'iso_P8R3_SOURCE_V2_v1')
+            gtsrcmaps(name)
+            #gtlikedr(name)
+            #gtsrcmaps2(name)
+            gtlike(name)
+            gtmodel(name)
+            gtbin2(name,ra,dec)
+            #farith(name)
+
+        print 'Finished treating ', name, '.'
+
