@@ -9,17 +9,17 @@ import pandas as pd
 ################################################################
 # Parameters to be editted:
 ################################################################
-PLIST = 'events_es_flares.list'
-SCFILE = '/data/scratch/ysong/fdata/scfile_dec3_19.fits'
+PLIST = '@/data/scratch/ysong/fdata/events.list'
+SCFILE = '/data/scratch/ysong/fdata/scfile.fits'
 gllfile= '/data/scratch/ysong/fdata/gll_iem_v07.fits'
 isofile= '/data/scratch/ysong/fdata/iso_P8R3_SOURCE_V2_v1.txt'
 catalog = '/data/scratch/ysong/fdata/gll_psc_v21.fit'
 #TMIN = 239155201.000
 #TMAX = 575424005.000
 EMIN = 100
-EMAX = 10000
+EMAX = 30000
 #DT = 3525# Size of time bins in seconds.
-RAD = 6 # Aperture radius.
+RAD = 10 # Aperture radius.
 CRAD = int(RAD/sqrt(2)/0.1)
 #SUFFIX = '_stack' # Suffix in the output file name.
 ################################################################
