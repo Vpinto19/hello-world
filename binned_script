@@ -11,11 +11,11 @@ import pandas as pd
 ################################################################
 PLIST = '@/data/scratch/ysong/fdata/events.list'
 SCFILE = '/data/scratch/ysong/fdata/scfile.fits'
-gllfile= '/data/scratch/ysong/fdata/gll_iem_v07.fits'
-isofile= '/data/scratch/ysong/fdata/iso_P8R3_SOURCE_V2_v1.txt'
-catalog = '/data/scratch/ysong/fdata/gll_psc_v21.fit'
-#TMIN = 239155201.000
-#TMAX = 575424005.000
+#gllfile= '/data/scratch/ysong/fdata/gll_iem_v07.fits'
+isofile= '/data/scratch/vpinto/iso_P8R3_SOURCE_V2_v1.txt'
+catalog = '/data/scratch/vpinto/gll_psc_v23.fit'
+timin = INDEF
+timax = INDEF
 EMIN = 100
 EMAX = 30000
 #DT = 3525# Size of time bins in seconds.
@@ -24,13 +24,17 @@ CRAD = int(RAD/sqrt(2)/0.1)
 #SUFFIX = '_stack' # Suffix in the output file name.
 ################################################################
 
-Stars = pd.read_csv(sys.argv[1])
-no_stars=len(Stars.index)
-no_flares=sum(Stars[u'No. Flares'])
-Flares = pd.read_csv(sys.argv[2])
+#Stars = pd.read_csv(sys.argv[1])
+#no_stars=len(Stars.index)
+#no_flares=sum(Stars[u'No. Flares'])
+#Flares = pd.read_csv(sys.argv[2])
+
+name=input("Name of cluster: ")
+ra=input("RA coor: ")
+dec=input("DEC coor: ")
 
 def select(name,ra,dec, tstart, tend, fn):
-	call('gtselect infile='+fn+' outfile='+name+'_binned'+SUFFIX+'_filtered.fits ra='+str(ra)+' dec='+str(dec)+' rad='+str(RAD)+' evclass=128 tmin='+str(tstart)+' tmax='+str(tend)+' emin='+str(EMIN)+' emax='+str(EMAX)+' zmax=100',shell=True)
+	call('gtselect infile=PLIST outfile='+name+'_binned_filtered.fits ra='+str(ra)+' dec='+str(dec)+' rad='+str(RAD)+' evclass=128 evtype=3 tmin='+str(tstart)+' tmax='+str(tend)+' emin='+str(EMIN)+' emax='+str(EMAX)+' zmax=100',shell=True)
 
 def mktime(name):
 	call('gtmktime scfile='+SCFILE+' filter="DATA_QUAL==1 && LAT_CONFIG==1 && ABS(ROCK_ANGLE)<52" roicut=yes evfile='+name+'_binned'+SUFFIX+'_filtered.fits outfile='+name+'_binned'+SUFFIX+'_gti.fits',shell=True)
